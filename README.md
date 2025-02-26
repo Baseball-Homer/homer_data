@@ -1,6 +1,6 @@
 # Homer
 
-This repository is data extraction code for a baseball simulation game `Homer`
+This repository contains data extraction code for Homer, a baseball simulation game. It retrieves player and team statistics using statsapi and processes them for in-game simulations.
 
 `Homer` allows you to create a squad based on some of the players in the MLB and play against others.
 
