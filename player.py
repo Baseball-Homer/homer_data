@@ -1,5 +1,9 @@
 import statsapi
+import os
 from stats import extract_batter_stat, extract_pitcher_stat
+import requests
+import pandas as pd
+from dotenv import load_dotenv
 
 def players_info(teamId):
     team = statsapi.roster(teamId)
@@ -24,7 +28,7 @@ def print_all_active_players():
 
     print(players)
 
-
+ 
 def extract_player_info(name):
     player_data = statsapi.lookup_player(name, )
 
@@ -64,6 +68,8 @@ def extract_player_info(name):
         'discipline': batter[2]
     }
 
+    return player_info_json
+
 
 def extract_players_info(players):
     player_info_list = []
@@ -71,18 +77,17 @@ def extract_players_info(players):
     for name in players:
         player_data = statsapi.lookup_player(name)
         player_id = player_data[0]['id']
-        first_name = player_data[0]['useName']
-        last_name = player_data[0]['lastName']
+        name = player_data[0]['useName'] + " " + player_data[0]['lastName']
         team_id = player_data[0]['currentTeam']['id']
-        position_code = player_data[0]['primaryPosition']['code']
-        pitcher = [10, 10, '0']
-        batter = [10, 10, 10]
+        #position_code = player_data[0]['primaryPosition']['code']
+        # pitcher = [10, 10, '0']
+        # batter = [10, 10, 10]
 
-        if position_code == '1':
-            pitcher = extract_pitcher_stat(player_id)
-            position_code = pitcher[2]
-        else:
-            batter = extract_batter_stat(player_id)
+        # if position_code == '1':
+        #     pitcher = extract_pitcher_stat(player_id)
+        #     position_code = pitcher[2]
+        # else:
+        #     batter = extract_batter_stat(player_id)
 
         if 'primaryNumber' in player_data[0]:
             primary_num = player_data[0]['primaryNumber']
@@ -92,20 +97,35 @@ def extract_players_info(players):
         # 선수 정보를 JSON 형식으로 생성하여 리스트에 추가
         player_info_json = {
             'id': player_id,
-            'firstName': first_name,
-            'lastName': last_name,
+            'name' : name,
             'player_photo': "https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_426,q_auto:best/v1/people/" + str(
                 player_id) + "/headshot/67/current",
-            'primary_num': primary_num,
+            # 'primary_num': primary_num,
             'teamId': team_id,
-            'primaryPosition': position_code,
-            'stuff': pitcher[0],
-            'control': pitcher[1],
-            'contact': batter[0],
-            'power': batter[1],
-            'discipline': batter[2]
+            # 'primaryPosition': position_code,
+            # 'stuff': pitcher[0],
+            # 'control': pitcher[1],
+            # 'contact': batter[0],
+            # 'power': batter[1],
+            # 'discipline': batter[2]
         }
 
         player_info_list.append(player_info_json)
 
     return player_info_list
+
+def extract_players_stat():
+    load_dotenv()
+
+    api_key = os.getenv("API_KEY")
+
+    url = "https://api.sportsdata.io/v3/mlb/stats/json/PlayerSeasonStats/2024?key=" + api_key
+    
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        data = response.json()
+        df = pd.DataFrame(data)
+        print(df.head())
+    else:
+        print(f"Error: {response.status_code}, {response.text}")
