@@ -2,7 +2,7 @@ import statsapi
 
 def extract_batter_stat(player_id):
     try:
-        player = statsapi.player_stat_data(player_id, group="[hitting]", type="season")['stats'][0]['stats']
+        player = statsapi.player_stats(player_id, group="[hitting]", type="season")
         plate = player['plateAppearances']
         avg = float(player['avg'])
         obp = float(player['obp'])
