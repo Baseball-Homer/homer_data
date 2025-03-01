@@ -18,6 +18,6 @@ if __name__ == '__main__':
     # result = pitcher_versus_batter(543037, 660670)  # 예시 투수 vs 타자
     # print(f"Match Result: {result}")
 
-    print_all_active_players()
+    # statsapi.get('stats', {'stats':'', 'group':'hitting', 'season': '2024', 'personId': 592450})
     # extract_players_stat()
-    # print( statsapi.player_stats(next(x['id'] for x in statsapi.get('sports_players',{'season':2024,'gameType':'W'})['people'] if x['fullName']=='Andrew Chafin'), 'hitting', 'career') )
+    print( statsapi.player_stats(next(x['id'] for x in statsapi.get('sports_players',{'season':2024,'gameType':'W'})['people'] if x['fullName']=='Juan Soto'), 'hitting', 'season') )
