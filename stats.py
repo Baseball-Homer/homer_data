@@ -1,4 +1,10 @@
 import statsapi
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.pipeline import Pipeline
 
 def extract_batter_stat(player_id):
     try:
@@ -109,3 +115,35 @@ def extract_pitcher_stat(player_id):
         position = '0'
 
     return [round(stuff), round(control), position]
+
+def scale_to_20_80(series):
+    scaler = MinMaxScaler(feature_range=(20, 80))
+    return scaler.fit_transform(series.values.reshape(-1, 1)).flatten()
+
+def calculate_batter_stat(data):
+    df = pd.DataFrame(data)
+
+    df["Contact"] = scale_to_20_80(df["BattingAverage"])  
+    df["Power"] = scale_to_20_80(df["SluggingPercentage"] - df["BattingAverage"])
+    df["Discipline"] = scale_to_20_80(df["OnBasePercentage"] - df["BattingAverage"])
+
+    df["Weight"] = np.clip(np.log1p(df["AtBats"]) / np.log1p(600), 0.3, 1)  # 최소 30% 반영
+
+    df["Contact"] *= df["Weight"]
+    df["Power"] *= df["Weight"]
+    df["Discipline"] *= df["Weight"]
+
+    X = df[["AtBats", "BattingAverage", "OnBasePercentage", "SluggingPercentage"]]
+    y = df[["Contact", "Power", "Discipline"]]
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    model = Pipeline([
+        ("regressor", RandomForestRegressor(n_estimators=100, random_state=42))
+    ])
+
+    model.fit(X_train, y_train)
+    predictions = model.predict(X_test)
+
+    pred_df = pd.DataFrame(predictions, columns=["Contact", "Power", "Discipline"])
+    print(pred_df)
