@@ -89,10 +89,10 @@ def extract_players_info(players):
         # else:
         #     batter = extract_batter_stat(player_id)
 
-        if 'primaryNumber' in player_data[0]:
-            primary_num = player_data[0]['primaryNumber']
-        else:
-            primary_num = "None"
+        # if 'primaryNumber' in player_data[0]:
+        #     primary_num = player_data[0]['primaryNumber']
+        # else:
+        #     primary_num = "None"
 
         # 선수 정보를 JSON 형식으로 생성하여 리스트에 추가
         player_info_json = {
@@ -126,7 +126,7 @@ def extract_players_stat():
     if response.status_code == 200:
         data = response.json()
         df = pd.DataFrame(data)
-        rows = ['PlayerID', 'Name', 'Position', 'PositionCategory', 'InningsPitchedDecimal', 'EarnedRunAverage', 'PitchingStrikeouts', 'PitchingWalks', 'AtBats', 'BattingAverage', 'OnBasePercentage', 'SluggingPercentage']
+        rows = ['PlayerID', 'Name', 'Games', 'Started', 'Position', 'PositionCategory', 'InningsPitchedDecimal', 'EarnedRunAverage', 'PitchingStrikeouts', 'PitchingWalks', 'AtBats', 'BattingAverage', 'OnBasePercentage', 'SluggingPercentage']
         print(df.head())
     else:
         print(f"Error: {response.status_code}, {response.text}")
