@@ -120,6 +120,11 @@ def scale_to_20_80(series):
     scaler = MinMaxScaler(feature_range=(20, 80))
     return scaler.fit_transform(series.values.reshape(-1, 1)).flatten()
 
+def scale_stamina(series, min_val, max_val):
+    scaler = MinMaxScaler(feature_range=(min_val, max_val))
+    scaled_values = scaler.fit_transform(series.values.reshape(-1, 1)).flatten()
+    return np.round(scaled_values).astype(int)
+
 def calculate_batter_stat(data):
     df = pd.DataFrame(data)
 
@@ -146,4 +151,40 @@ def calculate_batter_stat(data):
     predictions = model.predict(X_test)
 
     pred_df = pd.DataFrame(predictions, columns=["Contact", "Power", "Discipline"])
+    print(pred_df)
+
+def calculate_pitcher_stat(data):
+    df = pd.DataFrame(data)
+
+    df['Stuff'] = scale_to_20_80(df['PitchingStrikeouts'] / df['InningsPitchedDecimal'] / df['EarnedRunAverage'])
+    df['Control'] = scale_to_20_80(df['PitchingWalks'] / df['InningsPitchedDecimal'] / df["EarnedRunAverage"])
+    df['Stamina'] = np.where(
+        df['Position'] == 'SP', 
+        scale_stamina(df['Stamina'], 40, 80),  # 선발투수 40~80
+        scale_stamina(df['Stamina'], 20, 40)   # 불펜투수 20~40
+    )
+
+    df["StarterWeight"] = np.clip(np.log1p(df["Games"]) / np.log1p(600), 0.3, 1)  # 최소 30% 반영
+    df["RelieverWeight"] = np.clip(np.log1p(df["Games"]) / np.log1p(600), 0.3, 1)  # 최소 30% 반영
+    
+    if df['Position'] == 'SP':
+        df["Stuff"] *= df["StarterWeight"]
+        df["Control"] *= df["StarterWeight"]
+    else:
+        df["Stuff"] *= df["RelieverWeight"]
+        df["Control"] *= df["RelieverWeight"]
+
+    X = df[["InningsPitchedDecimal", "PitchingStrikeouts", "PitchingWalks", "EarnedRunAverage"]]
+    y = df[["Stuff", "Control", "Stamina"]]
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    model = Pipeline([
+        ("regressor", RandomForestRegressor(n_estimators=100, random_state=42))
+    ])
+
+    model.fit(X_train, y_train)
+    predictions = model.predict(X_test)
+
+    pred_df = pd.DataFrame(predictions, columns=["Stuff", "Control", "Stamina"])
     print(pred_df)
