@@ -26,9 +26,53 @@ def print_all_active_players():
         teams.append(team_id)
         players.append(players_info(team_id))
 
-    print(players)
+    df = pd.concat(players, ignore_index=True)
+    
+    print(df)  # 결과 출력
+    return df
 
- 
+def extract_players_info(players):
+    player_info_list = []
+
+    for name in players:
+        player_data = statsapi.lookup_player(name)
+        player_id = player_data[0]['id']
+        name = player_data[0]['useName'] + " " + player_data[0]['lastName']
+        # team_id = player_data[0]['currentTeam']['id']
+        # position_code = player_data[0]['primaryPosition']['code']
+        # pitcher = [10, 10, '0']
+        # batter = [10, 10, 10]
+
+        # if position_code == '1':
+        #     pitcher = extract_pitcher_stat(player_id)
+        #     position_code = pitcher[2]
+        # else:
+        #     batter = extract_batter_stat(player_id)
+
+        if 'primaryNumber' in player_data[0]:
+            primary_num = player_data[0]['primaryNumber']
+        else:
+            primary_num = "None"
+
+        # 선수 정보를 JSON 형식으로 생성하여 리스트에 추가
+        player_info_json = {
+            'ID': player_id,
+            'Name' : name,
+            'player_photo': "https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_426,q_auto:best/v1/people/" + str(player_id) + "/headshot/67/current",
+            'primary_num': primary_num,
+            # 'teamId': team_id,
+            # 'primaryPosition': position_code,
+            # 'stuff': pitcher[0],
+            # 'control': pitcher[1],
+            # 'contact': batter[0],
+            # 'power': batter[1],
+            # 'discipline': batter[2]
+        }
+
+        player_info_list.append(player_info_json)
+
+    return pd.DataFrame(player_info_list)
+
 def extract_player_info(name):
     player_data = statsapi.lookup_player(name, )
 
@@ -70,50 +114,6 @@ def extract_player_info(name):
 
     return player_info_json
 
-
-def extract_players_info(players):
-    player_info_list = []
-
-    for name in players:
-        player_data = statsapi.lookup_player(name)
-        player_id = player_data[0]['id']
-        name = player_data[0]['useName'] + " " + player_data[0]['lastName']
-        # team_id = player_data[0]['currentTeam']['id']
-        # position_code = player_data[0]['primaryPosition']['code']
-        # pitcher = [10, 10, '0']
-        # batter = [10, 10, 10]
-
-        # if position_code == '1':
-        #     pitcher = extract_pitcher_stat(player_id)
-        #     position_code = pitcher[2]
-        # else:
-        #     batter = extract_batter_stat(player_id)
-
-        # if 'primaryNumber' in player_data[0]:
-        #     primary_num = player_data[0]['primaryNumber']
-        # else:
-        #     primary_num = "None"
-
-        # 선수 정보를 JSON 형식으로 생성하여 리스트에 추가
-        player_info_json = {
-            'id': player_id,
-            'name' : name,
-            # 'player_photo': "https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_426,q_auto:best/v1/people/" + str(
-            #     player_id) + "/headshot/67/current",
-            # 'primary_num': primary_num,
-            # 'teamId': team_id,
-            # 'primaryPosition': position_code,
-            # 'stuff': pitcher[0],
-            # 'control': pitcher[1],
-            # 'contact': batter[0],
-            # 'power': batter[1],
-            # 'discipline': batter[2]
-        }
-
-        player_info_list.append(player_info_json)
-
-    return player_info_list
-
 def extract_players_stat():
     load_dotenv()
 
@@ -125,8 +125,12 @@ def extract_players_stat():
 
     if response.status_code == 200:
         data = response.json()
-        df = pd.DataFrame(data)
-        rows = ['PlayerID', 'Name', 'Games', 'Started', 'Position', 'PositionCategory', 'InningsPitchedDecimal', 'EarnedRunAverage', 'PitchingStrikeouts', 'PitchingWalks', 'AtBats', 'BattingAverage', 'OnBasePercentage', 'SluggingPercentage']
-        print(df.head())
+        df_stat = pd.DataFrame(data)
+        rows = ['Name', 'Games', 'Started', 'Position', 'PositionCategory', 'InningsPitchedDecimal', 'EarnedRunAverage', 'PitchingStrikeouts', 'PitchingWalks', 'AtBats', 'BattingAverage', 'OnBasePercentage', 'SluggingPercentage']
+        df_stat = df_stat[rows]
+        df_id = print_all_active_players()
+        df = pd.merge(df_id, df_stat, on="Name", how='inner')
+        df.to_csv('players.csv', index=False)
+        print(df_stat.head())
     else:
         print(f"Error: {response.status_code}, {response.text}")

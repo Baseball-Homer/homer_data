@@ -18,3 +18,10 @@ def extract_team_info():
         teams.append(teams_info_json)
 
     return teams
+
+def get_teams():
+    teams = []
+    for team in statsapi.lookup_team(''):
+        teams.append(team['id'])
+
+    return teams
