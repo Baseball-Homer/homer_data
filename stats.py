@@ -125,47 +125,66 @@ def scale_stamina(series, min_val, max_val):
     scaled_values = scaler.fit_transform(series.values.reshape(-1, 1)).flatten()
     return np.round(scaled_values).astype(int)
 
-def calculate_batter_stat(data):
-    df = pd.DataFrame(data)
+def train_batter_model(data):
+    data["Contact"] = scale_to_20_80(data["BattingAverage"])
+    data["Power"] = scale_to_20_80(data["SluggingPercentage"] - data["BattingAverage"])
+    data["Discipline"] = scale_to_20_80(data["OnBasePercentage"] - data["BattingAverage"])
 
-    df["Contact"] = scale_to_20_80(df["BattingAverage"])  
-    df["Power"] = scale_to_20_80(df["SluggingPercentage"] - df["BattingAverage"])
-    df["Discipline"] = scale_to_20_80(df["OnBasePercentage"] - df["BattingAverage"])
+    # 학습 데이터 준비
+    X_train = data[["AtBats", "BattingAverage", "OnBasePercentage", "SluggingPercentage"]]
+    y_train = data[["Contact", "Power", "Discipline"]]
 
-    df["Weight"] = np.clip(np.log1p(df["AtBats"]) / np.log1p(600), 0.3, 1)  # 최소 30% 반영
-
-    df["Contact"] *= df["Weight"]
-    df["Power"] *= df["Weight"]
-    df["Discipline"] *= df["Weight"]
-
-    X = df[["AtBats", "BattingAverage", "OnBasePercentage", "SluggingPercentage"]]
-    y = df[["Contact", "Power", "Discipline"]]
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-    model = Pipeline([
-        ("regressor", RandomForestRegressor(n_estimators=100, random_state=42))
-    ])
-
+    # 2️⃣ RandomForestRegressor 모델 학습
+    model = RandomForestRegressor(n_estimators=100, random_state=42)
     model.fit(X_train, y_train)
-    predictions = model.predict(X_test)
 
+def calculate_batter_stat(data, model):
+    df = pd.DataFrame(data)
+    X_test = df[["AtBats", "BattingAverage", "OnBasePercentage", "SluggingPercentage"]]
+
+    # 4️⃣ 예측 수행
+    predictions = model.predict(X_test)
     pred_df = pd.DataFrame(predictions, columns=["Contact", "Power", "Discipline"])
+
+    # 5️⃣ 가중치 적용 (타석 수 기반 Weight 반영)
+    df["Weight"] = np.clip(np.log1p(df["AtBats"]) / np.log1p(600), 0.3, 1)
+
+    # 가중치 적용
+    pred_df["Contact"] *= df["Weight"]
+    pred_df["Power"] *= df["Weight"]
+    pred_df["Discipline"] *= df["Weight"]
+
+    # 최종 결과 출력
     print(pred_df)
 
-def calculate_pitcher_stat(data):
-    df = pd.DataFrame(data)
-
-    df['Stuff'] = scale_to_20_80(df['PitchingStrikeouts'] / df['InningsPitchedDecimal'] / df['EarnedRunAverage'])
-    df['Control'] = scale_to_20_80(df['PitchingWalks'] / df['InningsPitchedDecimal'] / df["EarnedRunAverage"])
-    df['Stamina'] = np.where(
-        df['Position'] == 'SP', 
-        scale_stamina(df['Stamina'], 40, 80),  # 선발투수 40~80
-        scale_stamina(df['Stamina'], 20, 40)   # 불펜투수 20~40
+def train_pitcher_model(data):
+    data['Stuff'] = scale_to_20_80(data['PitchingStrikeouts'] / data['InningsPitchedDecimal'] / data['EarnedRunAverage'])
+    data['Control'] = scale_to_20_80(data['PitchingWalks'] / data['InningsPitchedDecimal'] / data["EarnedRunAverage"])
+    data['Stamina'] = np.where(
+        data['Position'] == 'SP', 
+        scale_stamina(data['Stamina'], 40, 80),  # 선발투수 40~80
+        scale_stamina(data['Stamina'], 20, 40)   # 불펜투수 20~40
     )
 
-    df["StarterWeight"] = np.clip(np.log1p(df["Games"]) / np.log1p(600), 0.3, 1)  # 최소 30% 반영
-    df["RelieverWeight"] = np.clip(np.log1p(df["Games"]) / np.log1p(600), 0.3, 1)  # 최소 30% 반영
+    # 학습 데이터 준비
+    X_train = data[["InningsPitchedDecimal", "PitchingStrikeouts", "PitchingWalks", "EarnedRunAverage"]]
+    y_train = data[["Stuff", "Control", "Stamina"]]
+
+    # 2️⃣ RandomForestRegressor 모델 학습
+    model = RandomForestRegressor(n_estimators=100, random_state=42)
+    model.fit(X_train, y_train)
+
+def calculate_pitcher_stat(data, model):
+    df = pd.DataFrame(data)
+
+    X_test = df[["InningsPitchedDecimal", "PitchingStrikeouts", "PitchingWalks", "EarnedRunAverage"]]
+
+    # 4️⃣ 예측 수행
+    predictions = model.predict(X_test)
+    pred_df = pd.DataFrame(predictions, columns=["Stuff", "Control", "Stamina"])
+
+    df["StarterWeight"] = np.clip(np.log1p(df["Games"]) / np.log1p(600), 0.3, 1)
+    df["RelieverWeight"] = np.clip(np.log1p(df["Games"]) / np.log1p(600), 0.4, 1)
     
     if df['Position'] == 'SP':
         df["Stuff"] *= df["StarterWeight"]
@@ -174,17 +193,4 @@ def calculate_pitcher_stat(data):
         df["Stuff"] *= df["RelieverWeight"]
         df["Control"] *= df["RelieverWeight"]
 
-    X = df[["InningsPitchedDecimal", "PitchingStrikeouts", "PitchingWalks", "EarnedRunAverage"]]
-    y = df[["Stuff", "Control", "Stamina"]]
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-    model = Pipeline([
-        ("regressor", RandomForestRegressor(n_estimators=100, random_state=42))
-    ])
-
-    model.fit(X_train, y_train)
-    predictions = model.predict(X_test)
-
-    pred_df = pd.DataFrame(predictions, columns=["Stuff", "Control", "Stamina"])
     print(pred_df)
