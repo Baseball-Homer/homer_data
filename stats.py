@@ -1,6 +1,9 @@
 import statsapi
 import pandas as pd
 import numpy as np
+import requests
+import os
+from dotenv import load_dotenv
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import MinMaxScaler
@@ -124,6 +127,29 @@ def scale_stamina(series, min_val, max_val):
     scaler = MinMaxScaler(feature_range=(min_val, max_val))
     scaled_values = scaler.fit_transform(series.values.reshape(-1, 1)).flatten()
     return np.round(scaled_values).astype(int)
+
+def train_players():
+    load_dotenv()
+
+    api_key = os.getenv("API_KEY")
+
+    url = "https://api.sportsdata.io/v3/mlb/stats/json/PlayerSeasonStats/2023?key=" + api_key
+    
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        data = response.json()
+        df_stat = pd.DataFrame(data)
+        rows = ['Games', 'Started', 'Position', 'PositionCategory', 'InningsPitchedDecimal', 'EarnedRunAverage', 'PitchingStrikeouts', 'PitchingWalks', 'AtBats', 'BattingAverage', 'OnBasePercentage', 'SluggingPercentage']
+        df_stat = df_stat[rows]
+    else:
+        print(f"Error: {response.status_code}, {response.text}")
+
+    df_pitcher = df_stat.loc[df_stat['PositionCategory'] == 'P']
+    df_batter = df_stat.loc[df_stat['PositionCategory'] != 'P']
+
+    train_pitcher_model(df_pitcher)
+    train_batter_model(df_batter)
 
 def train_batter_model(data):
     data["Contact"] = scale_to_20_80(data["BattingAverage"])
