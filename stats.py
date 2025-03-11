@@ -6,7 +6,7 @@ import os
 from dotenv import load_dotenv
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.pipeline import Pipeline
 
 def extract_batter_stat(player_id):
@@ -120,8 +120,12 @@ def extract_pitcher_stat(player_id):
     return [round(stuff), round(control), position]
 
 def scale_to_20_80(series):
-    scaler = MinMaxScaler(feature_range=(20, 80))
-    return scaler.fit_transform(series.values.reshape(-1, 1)).flatten()
+    scaler = StandardScaler()
+    z_scores = scaler.fit_transform(series.values.reshape(-1, 1)).flatten()
+    
+    scaled_values = 50 + (z_scores * 15)
+
+    return np.clip(scaled_values, 20, 80)
 
 def scale_stamina(series, min_val, max_val):
     scaler = MinMaxScaler(feature_range=(min_val, max_val))
