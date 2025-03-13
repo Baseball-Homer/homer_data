@@ -1,12 +1,14 @@
 import statsapi
+import joblib
 import pandas as pd
 import numpy as np
 import requests
 import os
 from dotenv import load_dotenv
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.metrics import mean_squared_error
 from sklearn.pipeline import Pipeline
 
 def extract_batter_stat(player_id):
@@ -161,16 +163,43 @@ def train_batter_model(data):
     data["Discipline"] = scale_to_20_80(data["OnBasePercentage"] - data["BattingAverage"])
 
     # 학습 데이터 준비
-    X_train = data[["AtBats", "BattingAverage", "OnBasePercentage", "SluggingPercentage"]]
-    y_train = data[["Contact", "Power", "Discipline"]]
+    X = data[["AtBats", "BattingAverage", "OnBasePercentage", "SluggingPercentage"]]
+    y = data[["Contact", "Power", "Discipline"]]
 
-    # 2️⃣ RandomForestRegressor 모델 학습
-    model = RandomForestRegressor(n_estimators=100, random_state=42)
-    model.fit(X_train, y_train)
+    # 훈련/검증 데이터 분리
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-def calculate_batter_stat(data, model):
+    # 하이퍼파라미터 탐색 범위 설정
+    param_grid = {
+        'n_estimators': [100, 200, 300],
+        'max_depth': [10, 20, None],
+        'min_samples_split': [2, 5, 10]
+    }
+
+    # GridSearchCV를 활용한 최적 모델 탐색
+    rf = RandomForestRegressor(random_state=42)
+    grid_search = GridSearchCV(rf, param_grid, cv=3, scoring='neg_mean_squared_error', n_jobs=-1)
+    grid_search.fit(X_train, y_train)
+
+    # 최적의 모델 선택
+    best_model = grid_search.best_estimator_
+
+    # 검증 데이터에서 성능 확인
+    y_pred = best_model.predict(X_test)
+    mse = mean_squared_error(y_test, y_pred)
+    print(f"최적 모델 MSE: {mse:.4f}")
+
+    # 모델 저장
+    joblib.dump(best_model, "best_batter_model.pkl")
+    print("최적 모델이 best_batter_model.pkl 파일로 저장되었습니다.")
+
+    return best_model
+
+def calculate_batter_stat(data):
     df = pd.DataFrame(data)
     X_test = df[["AtBats", "BattingAverage", "OnBasePercentage", "SluggingPercentage"]]
+
+    model = joblib.load('best_batter_model.pkl')
 
     # 4️⃣ 예측 수행
     predictions = model.predict(X_test)
@@ -188,6 +217,9 @@ def calculate_batter_stat(data, model):
     print(pred_df)
 
 def train_pitcher_model(data):
+    data = data.copy()
+
+    # 20-80 스케일 변환
     data['Stuff'] = scale_to_20_80(data['PitchingStrikeouts'] / data['InningsPitchedDecimal'] / data['EarnedRunAverage'])
     data['Control'] = scale_to_20_80(data['PitchingWalks'] / data['InningsPitchedDecimal'] / data["EarnedRunAverage"])
     data['Stamina'] = np.where(
@@ -197,17 +229,44 @@ def train_pitcher_model(data):
     )
 
     # 학습 데이터 준비
-    X_train = data[["InningsPitchedDecimal", "PitchingStrikeouts", "PitchingWalks", "EarnedRunAverage"]]
-    y_train = data[["Stuff", "Control", "Stamina"]]
+    X = data[["InningsPitchedDecimal", "PitchingStrikeouts", "PitchingWalks", "EarnedRunAverage"]]
+    y = data[["Stuff", "Control", "Stamina"]]
 
-    # 2️⃣ RandomForestRegressor 모델 학습
-    model = RandomForestRegressor(n_estimators=100, random_state=42)
-    model.fit(X_train, y_train)
+    # 훈련/검증 데이터 분리
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-def calculate_pitcher_stat(data, model):
+    # 하이퍼파라미터 탐색 범위 설정
+    param_grid = {
+        'n_estimators': [100, 200, 300],
+        'max_depth': [10, 20, None],
+        'min_samples_split': [2, 5, 10]
+    }
+
+    # GridSearchCV를 활용한 최적 모델 탐색
+    rf = RandomForestRegressor(random_state=42)
+    grid_search = GridSearchCV(rf, param_grid, cv=3, scoring='neg_mean_squared_error', n_jobs=-1)
+    grid_search.fit(X_train, y_train)
+
+    # 최적의 모델 선택
+    best_model = grid_search.best_estimator_
+
+    # 검증 데이터에서 성능 확인
+    y_pred = best_model.predict(X_test)
+    mse = mean_squared_error(y_test, y_pred)
+    print(f"최적 모델 MSE: {mse:.4f}")
+
+    # 모델 저장
+    joblib.dump(best_model, "best_pitcher_model.pkl")
+    print("최적 모델이 best_pitcher_model.pkl 파일로 저장되었습니다.")
+
+    return best_model
+
+def calculate_pitcher_stat(data):
     df = pd.DataFrame(data)
 
     X_test = df[["InningsPitchedDecimal", "PitchingStrikeouts", "PitchingWalks", "EarnedRunAverage"]]
+
+    model = joblib.load('best_pitcher_model.pkl')
 
     # 4️⃣ 예측 수행
     predictions = model.predict(X_test)
