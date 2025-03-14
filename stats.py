@@ -139,7 +139,7 @@ def train_players():
 
     api_key = os.getenv("API_KEY")
 
-    url = "https://api.sportsdata.io/v3/mlb/stats/json/PlayerSeasonStats/2023?key=" + api_key
+    url = "https://api.sportsdata.io/v3/mlb/stats/json/PlayerSeasonStats/2024?key=" + api_key
     
     response = requests.get(url)
 
@@ -178,7 +178,7 @@ def train_batter_model(data):
 
     # GridSearchCV를 활용한 최적 모델 탐색
     rf = RandomForestRegressor(random_state=42)
-    grid_search = GridSearchCV(rf, param_grid, cv=3, scoring='neg_mean_squared_error', n_jobs=-1)
+    grid_search = GridSearchCV(rf, param_grid, cv=3, scoring='neg_mean_squared_error', n_jobs=1)
     grid_search.fit(X_train, y_train)
 
     # 최적의 모델 선택
@@ -219,13 +219,15 @@ def calculate_batter_stat(data):
 def train_pitcher_model(data):
     data = data.copy()
 
+    data = data[(data['InningsPitchedDecimal'] > 0) & (data['EarnedRunAverage'] > 0)]
+
     # 20-80 스케일 변환
     data['Stuff'] = scale_to_20_80(data['PitchingStrikeouts'] / data['InningsPitchedDecimal'] / data['EarnedRunAverage'])
     data['Control'] = scale_to_20_80(data['PitchingWalks'] / data['InningsPitchedDecimal'] / data["EarnedRunAverage"])
     data['Stamina'] = np.where(
         data['Position'] == 'SP', 
-        scale_stamina(data['Stamina'], 40, 80),  # 선발투수 40~80
-        scale_stamina(data['Stamina'], 20, 40)   # 불펜투수 20~40
+        scale_stamina(data['InningsPitchedDecimal'] / data['Games'], 40, 80),  # 선발투수 40~80
+        scale_stamina(data['InningsPitchedDecimal'] / data['Games'], 20, 40)   # 불펜투수 20~40
     )
 
     # 학습 데이터 준비
@@ -244,7 +246,7 @@ def train_pitcher_model(data):
 
     # GridSearchCV를 활용한 최적 모델 탐색
     rf = RandomForestRegressor(random_state=42)
-    grid_search = GridSearchCV(rf, param_grid, cv=3, scoring='neg_mean_squared_error', n_jobs=-1)
+    grid_search = GridSearchCV(rf, param_grid, cv=3, scoring='neg_mean_squared_error', n_jobs=1)
     grid_search.fit(X_train, y_train)
 
     # 최적의 모델 선택
