@@ -195,8 +195,9 @@ def train_batter_model(data):
 
     return best_model
 
-def calculate_batter_stat(data):
-    df = pd.DataFrame(data)
+def calculate_batter_stat():
+    df = pd.read_csv('players.csv')
+    df = df.loc[df['PositionCategory'] != 'P']
     X_test = df[["AtBats", "BattingAverage", "OnBasePercentage", "SluggingPercentage"]]
 
     model = joblib.load('best_batter_model.pkl')
@@ -204,6 +205,12 @@ def calculate_batter_stat(data):
     # 4️⃣ 예측 수행
     predictions = model.predict(X_test)
     pred_df = pd.DataFrame(predictions, columns=["Contact", "Power", "Discipline"])
+    pred_df['ID'] = df['ID']
+    pred_df['Name'] = df['Name']
+    pred_df['player_photo'] = df['player_photo']
+    pred_df['primary_num'] = df['primary_num']
+    pred_df['Position'] = df['Position']
+    pred_df['PositionCategory'] = df['PositionCategory']
 
     # 5️⃣ 가중치 적용 (타석 수 기반 Weight 반영)
     df["Weight"] = np.clip(np.log1p(df["AtBats"]) / np.log1p(600), 0.3, 1)
@@ -212,6 +219,12 @@ def calculate_batter_stat(data):
     pred_df["Contact"] *= df["Weight"]
     pred_df["Power"] *= df["Weight"]
     pred_df["Discipline"] *= df["Weight"]
+
+    pred_df = pred_df.dropna().reset_index(drop=True)
+
+    pred_df = pred_df[["ID", "Name", "player_photo", "primary_num", "Position", "PositionCategory", "Contact", "Power", "Discipline"]]
+
+    pred_df.to_csv('batters.csv', index=False)
 
     # 최종 결과 출력
     print(pred_df)
@@ -263,8 +276,9 @@ def train_pitcher_model(data):
 
     return best_model
 
-def calculate_pitcher_stat(data):
-    df = pd.DataFrame(data)
+def calculate_pitcher_stat():
+    df = pd.read_csv('players.csv')
+    df = df.loc[df['PositionCategory'] == 'P']
 
     X_test = df[["InningsPitchedDecimal", "PitchingStrikeouts", "PitchingWalks", "EarnedRunAverage"]]
 
@@ -274,14 +288,24 @@ def calculate_pitcher_stat(data):
     predictions = model.predict(X_test)
     pred_df = pd.DataFrame(predictions, columns=["Stuff", "Control", "Stamina"])
 
+    pred_df['ID'] = df['ID']
+    pred_df['Name'] = df['Name']
+    pred_df['player_photo'] = df['player_photo']
+    pred_df['primary_num'] = df['primary_num']
+    pred_df['Position'] = df['Position']
+    pred_df['PositionCategory'] = df['PositionCategory']
+ 
     df["StarterWeight"] = np.clip(np.log1p(df["Games"]) / np.log1p(600), 0.3, 1)
     df["RelieverWeight"] = np.clip(np.log1p(df["Games"]) / np.log1p(600), 0.4, 1)
     
-    if df['Position'] == 'SP':
-        df["Stuff"] *= df["StarterWeight"]
-        df["Control"] *= df["StarterWeight"]
-    else:
-        df["Stuff"] *= df["RelieverWeight"]
-        df["Control"] *= df["RelieverWeight"]
+    pred_df["Weight"] = np.where(df["Position"] == "SP", df["StarterWeight"], df["RelieverWeight"])
+    pred_df["Stuff"] *= pred_df["Weight"]
+    pred_df["Control"] *= pred_df["Weight"]
+
+    pred_df = pred_df.dropna().reset_index(drop=True)
+
+    pred_df = pred_df[["ID", "Name", "player_photo", "primary_num", "Position", "PositionCategory", "Stuff", "Control", "Stamina"]]
+
+    pred_df.to_csv('pitcher.csv', index=False)
 
     print(pred_df)
