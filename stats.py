@@ -224,7 +224,7 @@ def calculate_batter_stat():
 
     pred_df = pred_df[["ID", "Name", "player_photo", "primary_num", "Position", "PositionCategory", "Contact", "Power", "Discipline"]]
 
-    pred_df.to_csv('batters.csv', index=False)
+    pred_df.to_csv('batters.csv', index=False, encoding='utf-8-sig')
 
     # 최종 결과 출력
     print(pred_df)
@@ -306,6 +306,6 @@ def calculate_pitcher_stat():
 
     pred_df = pred_df[["ID", "Name", "player_photo", "primary_num", "Position", "PositionCategory", "Stuff", "Control", "Stamina"]]
 
-    pred_df.to_csv('pitcher.csv', index=False)
+    pred_df.to_csv('pitcher.csv', index=False, encoding='utf-8-sig')
 
     print(pred_df)
