@@ -38,7 +38,7 @@ def extract_players_info(players):
         player_data = statsapi.lookup_player(name)
         player_id = player_data[0]['id']
         name = player_data[0]['useName'] + " " + player_data[0]['lastName']
-        # team_id = player_data[0]['currentTeam']['id']
+        team_id = player_data[0]['currentTeam']['id']
         # position_code = player_data[0]['primaryPosition']['code']
         # pitcher = [10, 10, '0']
         # batter = [10, 10, 10]
@@ -60,7 +60,7 @@ def extract_players_info(players):
             'Name' : name,
             'player_photo': "https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_426,q_auto:best/v1/people/" + str(player_id) + "/headshot/67/current",
             'primary_num': primary_num,
-            # 'teamId': team_id,
+            'teamId': team_id,
             # 'primaryPosition': position_code,
             # 'stuff': pitcher[0],
             # 'control': pitcher[1],
@@ -130,7 +130,7 @@ def extract_players_stat():
         df_stat = df_stat[rows]
         df_id = print_all_active_players()
         df = pd.merge(df_id, df_stat, on="Name", how='inner')
-        df.to_csv('players.csv', index=False)
+        df.to_csv('players.csv', index=False, encoding='utf-8-sig')
         print(df_stat.head())
     else:
         print(f"Error: {response.status_code}, {response.text}")

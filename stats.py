@@ -197,7 +197,7 @@ def train_batter_model(data):
 
 def calculate_batter_stat():
     df = pd.read_csv('players.csv')
-    df = df.loc[df['PositionCategory'] != 'P']
+    df = df.loc[df['PositionCategory'] != 'P'].reset_index(drop=True)
     X_test = df[["AtBats", "BattingAverage", "OnBasePercentage", "SluggingPercentage"]]
 
     model = joblib.load('best_batter_model.pkl')
@@ -278,7 +278,7 @@ def train_pitcher_model(data):
 
 def calculate_pitcher_stat():
     df = pd.read_csv('players.csv')
-    df = df.loc[df['PositionCategory'] == 'P']
+    df = df.loc[df['PositionCategory'] == 'P'].reset_index(drop=True)
 
     X_test = df[["InningsPitchedDecimal", "PitchingStrikeouts", "PitchingWalks", "EarnedRunAverage"]]
 
