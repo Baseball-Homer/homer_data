@@ -13,7 +13,7 @@ The previous project collected player performance data and used a simple rule-ba
 
 ### 🚀 Upgraded Project
 The upgraded version introduces the following improvements:
-- Machine Learning Model Implementation: Predicts ratings using batting average, on-base percentage, and slugging percentage.
+- Machine Learning Model Implementation: Predicts ratings using Last year's batting average, on-base percentage, and slugging percentage.
 - Weighted Adjustments Based on Sample Size: Accounts for lower reliability in smaller samples.
 - Automated Data Collection: Uses the sportsdata.io API for real-time player statistics.
 - 20/80 Scale Conversion: Machine learning models map raw statistics to the 20–80 rating scale.
