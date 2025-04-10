@@ -9,7 +9,7 @@ The information about MLB players and teams is based on data from [MLB.com](http
 This repository was used for `Database System` Course of Chungbuk National University.
 
 ### 🏗 Previous Project
-The previous project collected player performance data and used a simple rule-based approach to calculate ratings. However, it lacked a proper mechanism to adjust for sample size reliability, leading to inaccuracies in evaluations.
+The previous project collected player performance data(stat) and used a simple rule-based approach to calculate ratings. However, it lacked a proper mechanism to adjust for sample size reliability, leading to inaccuracies in evaluations.
 
 ### 🚀 Upgraded Project
 The upgraded version introduces the following improvements:
